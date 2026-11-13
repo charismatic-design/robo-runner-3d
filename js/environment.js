@@ -167,8 +167,8 @@ export class Environment {
     this.shakeDuration = 0;
     this.shakeTimer = 0;
 
-    // 3. Renderer Setup (Capped at 1.5x pixel ratio to eliminate 4K Retina overdraw)
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    // 3. Renderer Setup (Disabled antialias & capped at 1.5x pixel ratio for maximum FPS on high-DPI screens)
+    this.renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     this.renderer.shadowMap.enabled = true;
@@ -203,15 +203,16 @@ export class Environment {
     this.dirLight = new THREE.DirectionalLight(biome.dirLight, 1.4);
     this.dirLight.position.set(12, 22, 10);
     this.dirLight.castShadow = true;
-    this.dirLight.shadow.mapSize.width = 2048;
-    this.dirLight.shadow.mapSize.height = 2048;
-    this.dirLight.shadow.camera.near = 0.5;
-    this.dirLight.shadow.camera.far = 120;
-    this.dirLight.shadow.camera.left = -16;
-    this.dirLight.shadow.camera.right = 16;
-    this.dirLight.shadow.camera.top = 20;
-    this.dirLight.shadow.camera.bottom = -15;
-    this.dirLight.shadow.bias = -0.0004;
+    // Capped shadow map at 1024x1024 with tight bounds to slash GPU VRAM and overdraw
+    this.dirLight.shadow.mapSize.width = 1024;
+    this.dirLight.shadow.mapSize.height = 1024;
+    this.dirLight.shadow.camera.near = 1.0;
+    this.dirLight.shadow.camera.far = 70;
+    this.dirLight.shadow.camera.left = -10;
+    this.dirLight.shadow.camera.right = 10;
+    this.dirLight.shadow.camera.top = 15;
+    this.dirLight.shadow.camera.bottom = -10;
+    this.dirLight.shadow.bias = -0.0005;
     this.scene.add(this.dirLight);
 
     this.rimLight = new THREE.DirectionalLight(biome.rim, 0.85);
@@ -338,9 +339,21 @@ export class Environment {
       emissiveIntensity: 1.4
     });
 
-    const lightCapGeo = new THREE.SphereGeometry(0.28, 12, 12);
+    const lightCapGeo = new THREE.SphereGeometry(0.28, 8, 8);
     const pylonSpacing = 16;
     const totalPylons = 12;
+
+    // Shared beacon cone geometry & material across all 24 pylons
+    const beaconConeGeo = new THREE.ConeGeometry(0.8, 3.5, 8);
+    beaconConeGeo.rotateX(Math.PI / 2);
+    beaconConeGeo.translate(0, 0, 1.75);
+    const beaconConeMat = new THREE.MeshBasicMaterial({
+      color: 0xff6600,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    });
 
     for (let i = 0; i < totalPylons; i++) {
       const z = -i * pylonSpacing + 10;
@@ -355,17 +368,7 @@ export class Environment {
         cap.position.y = 3.6;
         pylon.add(cap);
 
-        // Rotating Amber Warning Beacon Beam (for Level 2 Reactor Overdrive)
-        const beaconConeGeo = new THREE.ConeGeometry(0.8, 3.5, 8);
-        beaconConeGeo.rotateX(Math.PI / 2);
-        beaconConeGeo.translate(0, 0, 1.75);
-        const beaconConeMat = new THREE.MeshBasicMaterial({
-          color: 0xff6600,
-          transparent: true,
-          opacity: 0,
-          depthWrite: false,
-          blending: THREE.AdditiveBlending
-        });
+        // Rotating Amber Warning Beacon Beam (Level 2 Reactor Overdrive)
         const beaconCone = new THREE.Mesh(beaconConeGeo, beaconConeMat);
         beaconCone.position.set(0, 3.6, 0);
         pylon.add(beaconCone);
@@ -377,12 +380,22 @@ export class Environment {
       });
     }
 
-    // Overhead Sci-Fi Testing Arches
+    // Overhead Sci-Fi Testing Arches (Shared geometries & frame material)
     this.archNeonMat = new THREE.MeshStandardMaterial({
       color: biome.archNeon,
       emissive: biome.archNeon,
       emissiveIntensity: 1.1
     });
+
+    this.archFrameMat = new THREE.MeshStandardMaterial({
+      color: 0x242e40,
+      roughness: 0.4,
+      metalness: 0.7
+    });
+
+    this.archColGeo = new THREE.BoxGeometry(0.5, 6, 0.5);
+    this.archTopGeo = new THREE.BoxGeometry(12.5, 0.5, 0.5);
+    this.archNeonGeo = new THREE.BoxGeometry(11, 0.15, 0.2);
 
     const archSpacing = 48;
     const totalArches = 4;
@@ -428,28 +441,23 @@ export class Environment {
 
   createLabArch() {
     const archGroup = new THREE.Group();
-    const frameMat = new THREE.MeshStandardMaterial({
-      color: 0x242e40,
-      roughness: 0.4,
-      metalness: 0.7
-    });
 
-    const leftCol = new THREE.Mesh(new THREE.BoxGeometry(0.5, 6, 0.5), frameMat);
+    const leftCol = new THREE.Mesh(this.archColGeo, this.archFrameMat);
     leftCol.position.set(-6, 3, 0);
     leftCol.castShadow = true;
     archGroup.add(leftCol);
 
-    const rightCol = new THREE.Mesh(new THREE.BoxGeometry(0.5, 6, 0.5), frameMat);
+    const rightCol = new THREE.Mesh(this.archColGeo, this.archFrameMat);
     rightCol.position.set(6, 3, 0);
     rightCol.castShadow = true;
     archGroup.add(rightCol);
 
-    const topBeam = new THREE.Mesh(new THREE.BoxGeometry(12.5, 0.5, 0.5), frameMat);
+    const topBeam = new THREE.Mesh(this.archTopGeo, this.archFrameMat);
     topBeam.position.set(0, 6, 0);
     topBeam.castShadow = true;
     archGroup.add(topBeam);
 
-    const neonStrip = new THREE.Mesh(new THREE.BoxGeometry(11, 0.15, 0.2), this.archNeonMat);
+    const neonStrip = new THREE.Mesh(this.archNeonGeo, this.archNeonMat);
     neonStrip.position.set(0, 5.7, 0);
     archGroup.add(neonStrip);
 
