@@ -68,6 +68,10 @@ export class WebcamControls {
     this.canJump = true;
     this.canSlide = true;
 
+    // Performance throttling: Cap AI vision inference to ~15-20 FPS (50ms interval)
+    this.lastDetectTime = 0;
+    this.detectThrottleMs = 50;
+
     // Detected lane state (0: Left, 1: Center, 2: Right)
     this.currentDetectedLane = 1;
     this.currentGestureText = 'CENTER';
@@ -92,7 +96,8 @@ export class WebcamControls {
   }
 
   /**
-   * Lazily loads MediaPipe Tasks Vision bundle and initializes FaceLandmarker.
+   * Lazily loads MediaPipe Tasks Vision bundle and initializes FaceLandmarker
+   * with lightweight inference configuration (numFaces: 1, blendshapes/matrices disabled).
    */
   async initVision() {
     if (this.faceLandmarker) return;
@@ -112,9 +117,10 @@ export class WebcamControls {
             modelAssetPath: FACE_LANDMARKER_MODEL,
             delegate: 'GPU'
           },
+          numFaces: 1,
           outputFaceBlendshapes: false,
-          runningMode: 'VIDEO',
-          numFaces: 1
+          outputFacialTransformationMatrixes: false,
+          runningMode: 'VIDEO'
         });
       } catch (gpuError) {
         console.warn('WebcamControls: GPU delegate unavailable, using CPU fallback:', gpuError);
@@ -123,9 +129,10 @@ export class WebcamControls {
             modelAssetPath: FACE_LANDMARKER_MODEL,
             delegate: 'CPU'
           },
+          numFaces: 1,
           outputFaceBlendshapes: false,
-          runningMode: 'VIDEO',
-          numFaces: 1
+          outputFacialTransformationMatrixes: false,
+          runningMode: 'VIDEO'
         });
       }
     } catch (err) {
@@ -159,13 +166,13 @@ export class WebcamControls {
       // 1. Initialize vision model
       await this.initVision();
 
-      // 2. Request user webcam
+      // 2. Request user webcam (Capped to lightweight resolution & framerate for optimal RAM/CPU)
       const constraints = {
         video: {
-          width: { ideal: 480 },
-          height: { ideal: 360 },
+          width: { ideal: 320 },
+          height: { ideal: 240 },
           facingMode: 'user',
-          frameRate: { ideal: 30 }
+          frameRate: { ideal: 20, max: 24 }
         },
         audio: false
       };
@@ -181,10 +188,10 @@ export class WebcamControls {
         this.video.onerror = reject;
       });
 
-      // Match canvas resolution to video stream
+      // Match canvas resolution to video stream (capped at 320x240)
       if (this.canvas) {
-        this.canvas.width = this.video.videoWidth || 480;
-        this.canvas.height = this.video.videoHeight || 360;
+        this.canvas.width = this.video.videoWidth || 320;
+        this.canvas.height = this.video.videoHeight || 240;
       }
 
       this.isActive = true;
@@ -218,7 +225,7 @@ export class WebcamControls {
   }
 
   /**
-   * Shuts down camera stream and terminates detection loop.
+   * Shuts down camera stream, frees MediaPipe WebAssembly memory, and terminates detection loop.
    */
   stop() {
     if (this.animationFrameId) {
@@ -232,7 +239,18 @@ export class WebcamControls {
     }
 
     if (this.video) {
+      this.video.pause();
       this.video.srcObject = null;
+    }
+
+    // Explicitly release MediaPipe FaceLandmarker WebAssembly buffers & GPU memory
+    if (this.faceLandmarker) {
+      try {
+        this.faceLandmarker.close();
+      } catch (e) {
+        console.warn('WebcamControls: Error closing FaceLandmarker:', e);
+      }
+      this.faceLandmarker = null;
     }
 
     if (this.canvas && this.ctx) {
@@ -241,6 +259,8 @@ export class WebcamControls {
 
     this.isActive = false;
     this.isLoading = false;
+    this.lastDetectTime = 0;
+    this.lastVideoTime = -1;
 
     if (this.container) {
       this.container.classList.add('hidden');
@@ -284,16 +304,22 @@ export class WebcamControls {
   }
 
   /**
-   * Continuous animation loop that runs vision inference on video frames.
+   * Continuous animation loop that runs vision inference throttled to ~15-20 FPS.
    */
   detectLoop() {
     if (!this.isActive || !this.video || !this.faceLandmarker) return;
 
-    if (this.video.readyState >= 2 && this.video.currentTime !== this.lastVideoTime) {
+    const now = performance.now();
+
+    // Throttle MediaPipe landmark detection to ~15-20 FPS (50ms interval) instead of every requestAnimationFrame
+    if (now - this.lastDetectTime >= this.detectThrottleMs &&
+        this.video.readyState >= 2 &&
+        this.video.currentTime !== this.lastVideoTime) {
+      this.lastDetectTime = now;
       this.lastVideoTime = this.video.currentTime;
-      const startTimeMs = performance.now();
       try {
-        const results = this.faceLandmarker.detectForVideo(this.video, startTimeMs);
+        const results = this.faceLandmarker.detectForVideo(this.video, now);
+        // Only redraw the corner overlay canvas when a new detection runs
         this.processLandmarks(results);
       } catch (err) {
         console.warn('WebcamControls: Inference warning:', err);
