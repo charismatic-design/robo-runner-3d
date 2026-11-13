@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Environment, BIOMES, LEVEL_THEMES } from './environment.js';
 import { Player } from './player.js';
 import { ObstacleManager } from './obstacles.js';
+import { WebcamControls } from './webcamControls.js';
 
 /**
  * Main Game Controller
@@ -49,10 +50,13 @@ class Game {
       () => this.onModelLoaded()
     );
 
-    // 5. Setup Controls & Listeners
+    // 5. Initialize Optional Webcam Gesture Controls (MediaPipe AI Vision)
+    this.initWebcamControls();
+
+    // 6. Setup Controls & Listeners
     this.setupEventListeners();
 
-    // 6. Start Main Animation Loop
+    // 7. Start Main Animation Loop
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
   }
@@ -151,6 +155,14 @@ class Game {
     this.pauseIcon = document.getElementById('pause-icon');
     this.audioToggleBtn = document.getElementById('btn-audio-toggle');
     this.audioIcon = document.getElementById('audio-icon');
+
+    // Webcam Gesture Controls & System Toast
+    this.btnWebcamToggle = document.getElementById('btn-webcam-toggle');
+    this.webcamIcon = document.getElementById('webcam-icon');
+    this.toastEl = document.getElementById('game-toast');
+    this.toastMsgEl = document.getElementById('toast-msg');
+    this.toastIconEl = document.getElementById('toast-icon');
+    this.toastTimer = null;
   }
 
   /**
@@ -355,6 +367,82 @@ class Game {
     this.audioIcon.textContent = this.isMuted ? '🔇' : '🔊';
   }
 
+  /**
+   * Initializes optional hands-free Webcam Gesture Mode (MediaPipe Tasks Vision)
+   */
+  initWebcamControls() {
+    this.webcamControls = new WebcamControls({
+      onLaneChange: (laneIndex) => {
+        if (this.state === 'PLAYING') {
+          const changed = this.player.setLane(laneIndex);
+          if (changed) {
+            this.playSound('lane');
+          }
+        }
+      },
+      onJump: () => {
+        if (this.state === 'PLAYING') {
+          if (!this.player.isJumping) {
+            this.player.jump();
+            this.playSound('jump');
+          }
+        }
+      },
+      onSlide: () => {
+        if (this.state === 'PLAYING') {
+          this.player.slide();
+          this.playSound('slide');
+        }
+      },
+      onStatusChange: ({ isActive, isLoading }) => {
+        if (this.btnWebcamToggle) {
+          if (isLoading) {
+            this.btnWebcamToggle.classList.add('loading');
+            this.btnWebcamToggle.classList.remove('active');
+            this.btnWebcamToggle.setAttribute('title', 'Initializing MediaPipe AI Vision...');
+          } else if (isActive) {
+            this.btnWebcamToggle.classList.remove('loading');
+            this.btnWebcamToggle.classList.add('active');
+            this.btnWebcamToggle.setAttribute('title', 'Webcam Gesture Mode: ON (Click or press C to turn off)');
+            this.showToast('📹 Webcam Gesture Mode ACTIVE! Lean head to steer, nod up to jump, duck to slide.', 4000);
+          } else {
+            this.btnWebcamToggle.classList.remove('loading');
+            this.btnWebcamToggle.classList.remove('active');
+            this.btnWebcamToggle.setAttribute('title', 'Toggle Webcam Gesture Controls (C)');
+          }
+        }
+      },
+      onError: (errMsg) => {
+        this.showToast(errMsg, 5000);
+        if (this.btnWebcamToggle) {
+          this.btnWebcamToggle.classList.remove('loading');
+          this.btnWebcamToggle.classList.remove('active');
+        }
+      }
+    });
+  }
+
+  toggleWebcam() {
+    if (this.webcamControls) {
+      this.webcamControls.toggle();
+    }
+  }
+
+  showToast(msg, duration = 3500) {
+    if (!this.toastEl || !this.toastMsgEl) return;
+    this.toastMsgEl.textContent = msg;
+    this.toastEl.classList.remove('hidden');
+
+    if (this.toastTimer) {
+      clearTimeout(this.toastTimer);
+    }
+    this.toastTimer = setTimeout(() => {
+      if (this.toastEl) {
+        this.toastEl.classList.add('hidden');
+      }
+    }, duration);
+  }
+
   onLoadProgress(percent) {
     if (this.loadingBarFill) {
       this.loadingBarFill.style.width = `${percent}%`;
@@ -382,6 +470,12 @@ class Game {
       // Audio toggle
       if (e.key === 'm' || e.key === 'M') {
         this.toggleAudio();
+        return;
+      }
+
+      // Webcam Gesture Mode toggle via C
+      if (e.code === 'KeyC' || e.key === 'c' || e.key === 'C') {
+        this.toggleWebcam();
         return;
       }
 
@@ -462,6 +556,13 @@ class Game {
       e.stopPropagation();
       this.toggleAudio();
     });
+
+    if (this.btnWebcamToggle) {
+      this.btnWebcamToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleWebcam();
+      });
+    }
 
     window.addEventListener('resize', () => {
       this.environment.onResize();

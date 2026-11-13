@@ -1,8 +1,9 @@
 # ⚡ Robo Runner 3D
 
-> A high-performance, modular 3D Endless Runner built with **Three.js (v0.160.0)**, **WebGL**, and vanilla **ES Modules**. Features the official Three.js `RobotExpressive` character, full skeletal animation mixing, athletic jump/slide physics, procedural reflex-driven hazard generation, multi-stage dynamic biomes, and a real-time Web Audio sound synthesizer.
+> A high-performance, modular 3D Endless Runner built with **Three.js (v0.160.0)**, **WebGL**, **MediaPipe AI Vision**, and vanilla **ES Modules**. Features the official Three.js `RobotExpressive` character, full skeletal animation mixing, athletic jump/slide physics, procedural reflex-driven hazard generation, multi-stage dynamic biomes, real-time Web Audio sound synthesis, and an optional **Hands-Free Webcam Gesture Mode** powered by on-device computer vision.
 
 ![Three.js](https://img.shields.io/badge/Three.js-v0.160.0-black?style=flat-square&logo=three.js)
+![MediaPipe](https://img.shields.io/badge/MediaPipe-Tasks%20Vision-00f0ff?style=flat-square&logo=google)
 ![JavaScript](https://img.shields.io/badge/JavaScript-ES6%2B%20Modules-yellow?style=flat-square&logo=javascript)
 ![HTML5](https://img.shields.io/badge/HTML5-Canvas%20%2F%20UI-orange?style=flat-square&logo=html5)
 ![CSS3](https://img.shields.io/badge/CSS3-Glassmorphism-blue?style=flat-square&logo=css3)
@@ -74,6 +75,16 @@
 - **Synthesized Web Audio Sound Engine:**
   - Custom polyphonic audio synthesizer using Web Audio API (sine, square, triangle wave synthesis with exponential gain envelopes).
   - Procedural sound effects for jumps, slides, crashes, level warp surges, button clicks, and countdown beeps with zero external audio assets needed.
+- **Webcam Gesture Mode (Optional Hands-Free AI Controls):**
+  - Powered by **MediaPipe Tasks Vision (`FaceLandmarker`)** via CDN.
+  - **100% Client-Side & Private:** All computer vision inference runs locally on your GPU/CPU via WebAssembly — zero video or camera frames are ever sent across the network.
+  - **Real-Time Mirrored Preview Widget:** Floating corner display featuring a live mirrored video stream, active nose tracker dot, facial landmarks, and visual lane deadzone guides.
+  - **Intuitive Head Mappings:**
+    - **Lean Left / Right:** Switches between the 3 lanes with calibrated deadzone margins.
+    - **Nod / Tilt Up:** Triggers Jump with cooldown debouncing.
+    - **Duck Down:** Triggers Slide & Fast-Fall ducking.
+  - **One-Touch Calibration:** Tap `🎯` on the preview widget to calibrate your personal neutral resting head position.
+  - **Graceful Error Handling:** If camera access is denied or unavailable, a friendly toast appears and the game continues seamlessly on keyboard & touch controls.
 - **Full Pause System:**
   - Pause anytime with `P`, `ESC`, or the HUD button without desyncing delta clocks or teleporting obstacles.
 
@@ -81,13 +92,16 @@
 
 ## 🕹️ Controls
 
-| Action | Keyboard | Touch / Mobile | Controller / Extra |
+| Action | Keyboard | Touch / Mobile | Webcam Gesture Mode (Optional) |
 | :--- | :--- | :--- | :--- |
-| **Move Left** | `A` or `←` | Swipe Left | Auto-lerp to left lane |
-| **Move Right** | `D` or `→` | Swipe Right | Auto-lerp to right lane |
-| **Jump** | `Space` / `W` / `↑` | Swipe Up | Athletic jump arc |
-| **Slide & Duck** | `S` or `↓` | Swipe Down | Crouch slide (60% lower hitbox) |
-| **Fast-Fall** | `S` or `↓` *(Mid-Air)* | Swipe Down *(Mid-Air)* | Slam to ground & chain slide |
+| **Move Left** | `A` or `←` | Swipe Left | **Lean Head Left** |
+| **Move Center** | — | — | **Center Head** |
+| **Move Right** | `D` or `→` | Swipe Right | **Lean Head Right** |
+| **Jump** | `Space` / `W` / `↑` | Swipe Up | **Nod / Tilt Head Up** |
+| **Slide & Duck** | `S` or `↓` | Swipe Down | **Duck Head Down** |
+| **Fast-Fall** | `S` or `↓` *(Mid-Air)* | Swipe Down *(Mid-Air)* | **Duck Head Down** *(Mid-Air)* |
+| **Toggle Webcam Mode**| `C` | Tap 📹 Button in HUD | Toggle Hands-Free Vision Controls |
+| **Recalibrate Head** | — | Tap 🎯 in Preview | Resets Neutral Center Resting Position |
 | **Pause / Resume** | `P` or `Esc` | Tap Pause Button (⏸) | Suspends game loop |
 | **Mute / Unmute** | `M` | Tap Audio Button (🔊) | Toggles sound effects |
 
@@ -102,7 +116,8 @@
 │   ├── main.js         # Game loop coordinator, finite state machine, Web Audio sound engine
 │   ├── environment.js  # Three.js scene, lighting, camera modes, 5+ biomes, particle effects
 │   ├── player.js       # RobotExpressive character loader, animation mixer, jump/slide physics
-│   └── obstacles.js    # Procedural obstacle spawner, minimum Z-spacing, Box3 colliders
+│   ├── obstacles.js    # Procedural obstacle spawner, minimum Z-spacing, Box3 colliders
+│   └── webcamControls.js # MediaPipe Tasks Vision (FaceLandmarker) gesture tracker & overlay
 └── .gitignore          # Excludes OS artifacts, node_modules, build caches, and env files
 ```
 
@@ -112,6 +127,7 @@
    - Implements a finite state machine: `START`, `PLAYING`, `PAUSED`, `LEVEL_COMPLETE`, `DYING`, `GAMEOVER`.
    - Manages the progressive score threshold formula and HUD updates.
    - Houses the procedural Web Audio synthesizer.
+   - Coordinates user inputs from keyboard, touch, and webcam gesture controllers.
 2. **`js/environment.js` (World & Render Engine):**
    - Configures `THREE.WebGLRenderer` with `ACESFilmicToneMapping` and `PCFSoftShadowMap`.
    - Handles camera positioning and transitions (`DEFAULT`, `HERO_DANCE`, `DEATH_ZOOM`).
@@ -125,6 +141,13 @@
    - Enforces strict minimum Z-distance tracking (`minZDistance`) per level.
    - Generates single waves, 2-step sequences, late-shift fake-outs, and 3-step gauntlets.
    - Performs intersection tests against player collision box.
+5. **`js/webcamControls.js` (AI Vision Gesture Controller):**
+   - Dynamically loads MediaPipe Tasks Vision (`FaceLandmarker`) and GPU/CPU WASM runtimes from CDN.
+   - Manages webcam video stream (`navigator.mediaDevices.getUserMedia`).
+   - Computes head/nose position relative to calibrated neutral point.
+   - Applies deadzone thresholds to map 3 lanes and triggers debounced Jump/Slide actions.
+   - Renders real-time mirrored canvas overlay with glowing landmark dots, deadzone guides, and action badges.
+   - Gracefully handles camera permissions and device errors without interrupting the game loop.
 
 ---
 
@@ -168,6 +191,7 @@ npx http-server -p 8080 -c-1
 ## 🛠️ Tech Stack
 
 - **Graphics Library:** [Three.js v0.160.0](https://threejs.org/) via unpkg ES Module Import Map
+- **Computer Vision:** [Google MediaPipe Tasks Vision v0.10.14](https://developers.google.com/mediapipe/solutions/vision/face_landmarker) (FaceLandmarker) via jsDelivr CDN
 - **3D Character Model:** `RobotExpressive.glb` (Official Three.js examples asset by [Tom Haas / mrdoob](https://github.com/mrdoob/three.js/tree/master/examples/models/gltf/RobotExpressive))
 - **Audio:** Web Audio API (procedural oscillator-based synthesis)
 - **Styling:** CSS3 Glassmorphism (`backdrop-filter: blur`), CSS Grid, Flexbox

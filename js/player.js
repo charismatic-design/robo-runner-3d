@@ -267,6 +267,22 @@ export class Player {
   }
 
   /**
+   * Set target lane directly (0 = Left, 1 = Center, 2 = Right).
+   * Used for absolute gesture tracking (Webcam Gesture Mode).
+   * Returns true if lane actually changed.
+   */
+  setLane(targetIndex) {
+    if (this.isDead || this.isVictory) return false;
+    const clamped = Math.max(0, Math.min(this.lanes.length - 1, Math.round(targetIndex)));
+    if (clamped !== this.currentLaneIndex) {
+      this.currentLaneIndex = clamped;
+      this.targetX = this.lanes[this.currentLaneIndex];
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Trigger vertical jump physics and play Jump animation.
    * Cancels any active slide immediately.
    */

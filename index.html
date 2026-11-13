@@ -6,12 +6,13 @@
   <title>Robo Runner 3D | RobotExpressive Endless Runner</title>
   <link rel="stylesheet" href="style.css">
 
-  <!-- ES Module Import Map for Three.js v0.160.0 and addons -->
+  <!-- ES Module Import Map for Three.js v0.160.0, addons and MediaPipe -->
   <script type="importmap">
     {
       "imports": {
         "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+        "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs"
       }
     }
   </script>
@@ -67,6 +68,10 @@
     </div>
 
     <div class="hud-controls-group">
+      <!-- Webcam Gesture Mode Toggle Button (C) -->
+      <button id="btn-webcam-toggle" class="hud-btn" title="Toggle Webcam Gesture Controls (C)" aria-label="Toggle Webcam Gesture Controls">
+        <span id="webcam-icon">📹</span>
+      </button>
       <!-- Pause Toggle Button (P or Esc) -->
       <button id="btn-pause-toggle" class="hud-btn" title="Pause Game (P or Esc)" aria-label="Pause Game">
         <span id="pause-icon">⏸</span>
@@ -77,6 +82,40 @@
       </button>
     </div>
   </header>
+
+  <!-- Webcam Gesture Mode Floating Corner Preview -->
+  <div id="webcam-preview-container" class="webcam-preview-container hidden">
+    <div class="webcam-preview-header">
+      <div class="webcam-status-indicator">
+        <span id="webcam-status-dot" class="webcam-status-dot"></span>
+        <span id="webcam-status-label" class="webcam-status-label">GESTURE MODE</span>
+      </div>
+      <div class="webcam-header-actions">
+        <button id="webcam-calibrate-btn" class="webcam-icon-btn" title="Recalibrate Neutral Head Position">🎯</button>
+        <button id="webcam-close-btn" class="webcam-icon-btn" title="Turn Off Webcam Mode">✕</button>
+      </div>
+    </div>
+    
+    <div class="webcam-video-wrap">
+      <video id="webcam-video" autoplay playsinline muted></video>
+      <canvas id="webcam-canvas"></canvas>
+      <div id="webcam-loading-spinner" class="webcam-spinner hidden">
+        <div class="spinner-ring"></div>
+        <span class="spinner-text">INITIALIZING AI VISION...</span>
+      </div>
+      <div id="webcam-action-badge" class="webcam-action-badge">CENTER</div>
+    </div>
+    
+    <div id="webcam-guide-text" class="webcam-guide-text">
+      Lean L / R to Steer • Tilt Up: Jump • Duck: Slide
+    </div>
+  </div>
+
+  <!-- Toast Notification for Webcam / System alerts -->
+  <div id="game-toast" class="game-toast hidden">
+    <span id="toast-icon">⚠️</span>
+    <span id="toast-msg">Camera access unavailable</span>
+  </div>
 
   <!-- Non-Obstructive Top Victory Banner (at top: 12%, leaves robot 100% visible) -->
   <div id="level-clear-banner" class="level-clear-banner hidden">
@@ -105,6 +144,8 @@
     <span><b>SPACE / W / ↑</b> : Jump</span>
     <span>•</span>
     <span><b>S / ↓</b> : Slide & Fast-Fall</span>
+    <span>•</span>
+    <span><b>C</b> : Webcam Mode</span>
     <span>•</span>
     <span><b>P / ESC</b> : Pause</span>
   </div>
@@ -153,6 +194,14 @@
           <div class="key-badges">
             <span class="key">S</span>
             <span class="key">↓</span>
+          </div>
+        </div>
+        <div class="control-row">
+          <span>Webcam Gestures</span>
+          <div class="key-badges">
+            <span class="key">C</span>
+            <span style="color: #666; font-size: 0.8rem;">or</span>
+            <span class="key">📹 HUD</span>
           </div>
         </div>
         <div class="control-row">
