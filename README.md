@@ -76,14 +76,15 @@
   - Custom polyphonic audio synthesizer using Web Audio API (sine, square, triangle wave synthesis with exponential gain envelopes).
   - Procedural sound effects for jumps, slides, crashes, level warp surges, button clicks, and countdown beeps with zero external audio assets needed.
 - **Webcam Gesture Mode (Optional Hands-Free AI Controls):**
-  - Powered by **MediaPipe Tasks Vision (`FaceLandmarker`)** via CDN.
+  - Powered by **MediaPipe Tasks Vision (`FaceDetector` / BlazeFace Short-Range, ~220 KB)** via CDN.
   - **100% Client-Side & Private:** All computer vision inference runs locally on your GPU/CPU via WebAssembly — zero video or camera frames are ever sent across the network.
   - **Real-Time Mirrored Preview Widget:** Floating corner display featuring a live mirrored video stream, active nose tracker dot, facial landmarks, and visual lane deadzone guides.
   - **Intuitive Head Mappings:**
     - **Lean Left / Right:** Switches between the 3 lanes with calibrated deadzone margins.
-    - **Nod / Tilt Up:** Triggers Jump with cooldown debouncing.
-    - **Duck Down:** Triggers Slide & Fast-Fall ducking.
-  - **One-Touch Calibration:** Tap `🎯` on the preview widget to calibrate your personal neutral resting head position.
+    - **Nod / Tilt Up (Δy < -0.022):** Triggers Jump with cooldown debouncing.
+    - **Duck Down (Δy > +0.048):** Triggers Slide & Fast-Fall ducking (calibrated to ignore slight pre-jump dips).
+  - **Shared 600ms Vertical Action Lock:** Triggering Slide blocks Jump for 600ms (preventing accidental rebound jumps when returning from a duck), and Jump blocks Slide for 600ms, with a tight neutral re-arm band (`-0.010 <= Δy <= +0.015`).
+  - **Auto-Recalibration:** Automatically recalibrates neutral resting posture `y0` whenever a new game starts or when Webcam Mode first activates once a face is detected. Manual calibration is always available via `🎯`.
   - **Graceful Error Handling:** If camera access is denied or unavailable, a friendly toast appears and the game continues seamlessly on keyboard & touch controls.
 - **Full Pause System:**
   - Pause anytime with `P`, `ESC`, or the HUD button without desyncing delta clocks or teleporting obstacles.

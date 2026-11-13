@@ -11,8 +11,11 @@
  *
  * Mappings & Calibrated Thresholds:
  * - Horizontal head/nose lean -> 3 lanes (Left, Center, Right) with deadzone margins.
- * - Natural head nod/lift up (-0.025) -> Jump (350ms cooldown, 0.015 re-arm hysteresis).
- * - Natural head duck down (+0.032) -> Slide & Fast-Fall (350ms cooldown, 0.015 re-arm hysteresis).
+ * - Natural head nod/lift up (Δy < -0.022) -> Jump (350ms cooldown).
+ * - Natural head duck down (Δy > +0.048) -> Slide & Fast-Fall (avoids pre-jump head dips).
+ * - Shared 600ms vertical action lock: Slide blocks Jump for 600ms (no duck rebound jumps), Jump blocks Slide for 600ms.
+ * - Tight neutral re-arm band (-0.010 <= Δy <= +0.015) before next vertical gesture can arm.
+ * - Auto-recalibration on game start and first face detection to lock neutral posture y0.
  */
 
 const MEDIAPIPE_VISION_BUNDLE = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs';
@@ -53,17 +56,22 @@ export class WebcamControls {
     this.neutralX = 0.50;
     this.neutralY = 0.45;
     this.isCalibrated = false;
+    this.calibratedFeedbackTimer = 0;
+    this.badgeActionExpiry = 0;
 
-    // Deadzone and action sensitivities (Tuned for effortless, reliable head gestures)
+    // Deadzone and action sensitivities
     this.deadzoneX = 0.065;      // +/- 6.5% width for Center lane
-    this.jumpThreshold = 0.025;  // Head nods/tilts up 2.5% relative to neutral -> Jump
-    this.slideThreshold = 0.032; // Head ducks down 3.2% relative to neutral -> Slide
-    this.hysteresisY = 0.015;    // Must return within 1.5% before re-triggering
+    this.jumpThreshold = 0.022;  // Head nods/tilts up: Δy < -0.022 -> Jump
+    this.slideThreshold = 0.048; // Head ducks down: Δy > +0.048 -> Slide (avoids pre-jump dip)
+    this.rearmMinY = -0.010;     // Tight neutral re-arm band lower bound (-0.010 <= Δy <= +0.015)
+    this.rearmMaxY = 0.015;      // Tight neutral re-arm band upper bound
 
-    // Action debounce timers (ms)
-    this.lastJumpTime = 0;
-    this.lastSlideTime = 0;
-    this.jumpCooldown = 350;     // Fast, athletic 350ms cooldown
+    // Shared vertical action lock & debounce timers (ms)
+    this.lastVerticalActionTime = -99999;
+    this.verticalLockMs = 600;   // 600ms mutual lockout between Jump and Slide (blocks duck rebound jumps)
+    this.lastJumpTime = -99999;
+    this.lastSlideTime = -99999;
+    this.jumpCooldown = 350;     // Individual action cooldown
     this.slideCooldown = 350;
     this.canJump = true;
     this.canSlide = true;
@@ -282,20 +290,23 @@ export class WebcamControls {
 
   /**
    * Recalibrate neutral head position to the current nose position.
+   * Runs automatically on new game start or when Webcam Mode first activates once a face is detected.
    */
-  calibrate() {
+  recalibrate() {
     this.isCalibrated = false;
+    this.lastVerticalActionTime = -99999;
+    this.canJump = true;
+    this.canSlide = true;
+    this.calibratedFeedbackTimer = performance.now() + 850;
     if (this.actionBadge) {
       this.actionBadge.textContent = 'CALIBRATED';
       this.actionBadge.style.color = '#10b981';
       this.actionBadge.style.borderColor = '#10b981';
-      setTimeout(() => {
-        if (this.actionBadge) {
-          this.actionBadge.style.color = '';
-          this.actionBadge.style.borderColor = '';
-        }
-      }, 800);
     }
+  }
+
+  calibrate() {
+    this.recalibrate();
   }
 
   /**
@@ -357,6 +368,15 @@ export class WebcamControls {
       this.neutralX = mirroredX;
       this.neutralY = mirroredY;
       this.isCalibrated = true;
+      this.lastVerticalActionTime = -99999;
+      this.canJump = true;
+      this.canSlide = true;
+      this.calibratedFeedbackTimer = performance.now() + 850;
+      if (this.actionBadge) {
+        this.actionBadge.textContent = 'CALIBRATED';
+        this.actionBadge.style.color = '#10b981';
+        this.actionBadge.style.borderColor = '#10b981';
+      }
     }
 
     // Relative displacement from calibrated neutral position
@@ -378,34 +398,39 @@ export class WebcamControls {
       this.onLaneChange(targetLane);
     }
 
-    // 2. VERTICAL ACTION DEBOUNCING (JUMP & SLIDE) - Responsive head gestures
+    // 2. VERTICAL ACTION DEBOUNCING (JUMP & SLIDE) - Shared 600ms lock & neutral re-arm band
     const now = performance.now();
     let verticalAction = null;
+    const isVerticalLocked = (now - this.lastVerticalActionTime) < this.verticalLockMs;
 
-    // Jump detection: slight head nod/lift UP (dy < -0.025)
+    // Neutral re-arm band: head must return inside [-0.010, +0.015] to re-arm gestures
+    if (dy >= this.rearmMinY && dy <= this.rearmMaxY) {
+      this.canJump = true;
+      this.canSlide = true;
+    }
+
+    // Jump detection: head nod/lift UP (Δy < -0.022)
+    // Strictly blocked for 600ms if Slide was triggered (prevents duck rebound jumps)
     if (dy < -this.jumpThreshold) {
-      if (this.canJump && (now - this.lastJumpTime > this.jumpCooldown)) {
+      if (this.canJump && !isVerticalLocked && (now - this.lastJumpTime > this.jumpCooldown)) {
         this.onJump();
         this.canJump = false;
         this.lastJumpTime = now;
+        this.lastVerticalActionTime = now;
         verticalAction = 'JUMP!';
       }
-    } else if (dy > -this.hysteresisY) {
-      // Re-arm jump when head returns towards neutral (+/- 0.015)
-      this.canJump = true;
     }
 
-    // Slide detection: slight head duck DOWN (dy > +0.032)
+    // Slide detection: head duck DOWN (Δy > +0.048)
+    // Avoids pre-jump head dips triggering slides; strictly blocked for 600ms if Jump was triggered
     if (dy > this.slideThreshold) {
-      if (this.canSlide && (now - this.lastSlideTime > this.slideCooldown)) {
+      if (this.canSlide && !isVerticalLocked && (now - this.lastSlideTime > this.slideCooldown)) {
         this.onSlide();
         this.canSlide = false;
         this.lastSlideTime = now;
+        this.lastVerticalActionTime = now;
         verticalAction = 'SLIDE!';
       }
-    } else if (dy < this.hysteresisY) {
-      // Re-arm slide when head returns towards neutral (+/- 0.015)
-      this.canSlide = true;
     }
 
     // Update Action Badge UI
@@ -421,14 +446,25 @@ export class WebcamControls {
   updateGestureBadge(lane, verticalAction) {
     if (!this.actionBadge) return;
 
+    const now = performance.now();
+
     if (verticalAction === 'JUMP!') {
       this.actionBadge.textContent = '⬆ JUMP!';
       this.actionBadge.style.color = '#ffd000';
       this.actionBadge.style.borderColor = '#ffd000';
+      this.badgeActionExpiry = now + 400;
     } else if (verticalAction === 'SLIDE!') {
       this.actionBadge.textContent = '⬇ SLIDE!';
       this.actionBadge.style.color = '#ff2a85';
       this.actionBadge.style.borderColor = '#ff2a85';
+      this.badgeActionExpiry = now + 400;
+    } else if (now < (this.badgeActionExpiry || 0)) {
+      return;
+    } else if (now < (this.calibratedFeedbackTimer || 0)) {
+      this.actionBadge.textContent = 'CALIBRATED';
+      this.actionBadge.style.color = '#10b981';
+      this.actionBadge.style.borderColor = '#10b981';
+      return;
     } else {
       if (lane === 0) {
         this.actionBadge.textContent = '⬅ LEFT';
@@ -469,17 +505,23 @@ export class WebcamControls {
     ctx.lineTo(rightBoundX, h);
     ctx.stroke();
 
+    // Neutral resting band fill (-0.010 <= dy <= +0.015)
+    const rearmTopY = (this.neutralY + this.rearmMinY) * h;
+    const rearmBottomY = (this.neutralY + this.rearmMaxY) * h;
+    ctx.fillStyle = 'rgba(0, 240, 255, 0.05)';
+    ctx.fillRect(0, rearmTopY, w, Math.max(2, rearmBottomY - rearmTopY));
+
     // Horizontal threshold lines for Jump and Slide
     const jumpLineY = (this.neutralY - this.jumpThreshold) * h;
     const slideLineY = (this.neutralY + this.slideThreshold) * h;
 
-    ctx.strokeStyle = 'rgba(255, 208, 0, 0.25)';
+    ctx.strokeStyle = 'rgba(255, 208, 0, 0.3)';
     ctx.beginPath();
     ctx.moveTo(0, jumpLineY);
     ctx.lineTo(w, jumpLineY);
     ctx.stroke();
 
-    ctx.strokeStyle = 'rgba(255, 42, 133, 0.25)';
+    ctx.strokeStyle = 'rgba(255, 42, 133, 0.3)';
     ctx.beginPath();
     ctx.moveTo(0, slideLineY);
     ctx.lineTo(w, slideLineY);

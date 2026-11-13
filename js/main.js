@@ -649,6 +649,11 @@ class Game {
     this.environment.setCameraMode('DEFAULT');
     this.environment.stopVictoryCelebration();
 
+    // Auto-recalibrate webcam gesture controls so neutral y0 matches player's posture
+    if (this.webcamControls) {
+      this.webcamControls.recalibrate();
+    }
+
     // UI Updates
     this.startScreen.classList.add('hidden');
     this.gameOverScreen.classList.add('hidden');
