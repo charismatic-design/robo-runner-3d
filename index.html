@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Robo Runner 3D | RobotExpressive Endless Runner</title>
+  <link rel="stylesheet" href="style.css">
+
+  <!-- ES Module Import Map for Three.js v0.160.0 and addons -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+
+  <!-- Fullscreen Impact / Crash Flash Overlay -->
+  <div id="impact-overlay" class="impact-overlay"></div>
+
+  <!-- Fullscreen Warp / Shockwave Overlay -->
+  <div id="warp-overlay" class="warp-overlay"></div>
+
+  <!-- Cinematic Stage Title Card (Plays for 2.5s on Stage Launch) -->
+  <div id="stage-card" class="stage-card hidden">
+    <div class="stage-card-pill" id="stage-card-pill">
+      <div class="stage-num" id="stage-card-num">STAGE 02</div>
+      <div class="stage-divider"></div>
+      <div class="stage-info">
+        <h2 class="stage-name" id="stage-card-name">REACTOR OVERDRIVE</h2>
+        <p class="stage-desc" id="stage-card-desc">DOUBLE-STACK COMBOS & MOVING DRONES ACTIVE</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- In-Game HUD -->
+  <header id="hud" class="hidden">
+    <div class="hud-pill">
+      <div class="hud-item">
+        <span class="hud-label">Level</span>
+        <span id="hud-level" class="hud-value hud-level">1</span>
+      </div>
+      <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.15);"></div>
+      <div class="hud-item">
+        <span class="hud-label">Score</span>
+        <span id="hud-score" class="hud-value">0</span>
+      </div>
+      <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.15);"></div>
+      <div class="hud-item">
+        <span class="hud-label">Speed</span>
+        <span id="hud-speed" class="hud-value hud-speed">1.0x</span>
+      </div>
+    </div>
+
+    <!-- Mini Level Progress Bar -->
+    <div class="hud-progress-pill">
+      <div class="hud-progress-header">
+        <span class="hud-progress-label">Next Lvl Target</span>
+        <span id="hud-progress-text" class="hud-progress-value">NEXT LVL: 0 / 500</span>
+      </div>
+      <div class="hud-progress-bar">
+        <div id="hud-progress-fill" class="hud-progress-fill"></div>
+      </div>
+    </div>
+
+    <div class="hud-controls-group">
+      <!-- Pause Toggle Button (P or Esc) -->
+      <button id="btn-pause-toggle" class="hud-btn" title="Pause Game (P or Esc)" aria-label="Pause Game">
+        <span id="pause-icon">⏸</span>
+      </button>
+      <!-- Audio Toggle Button (M) -->
+      <button id="btn-audio-toggle" class="hud-btn" title="Toggle Sound (M)" aria-label="Toggle Sound">
+        <span id="audio-icon">🔊</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Non-Obstructive Top Victory Banner (at top: 12%, leaves robot 100% visible) -->
+  <div id="level-clear-banner" class="level-clear-banner hidden">
+    <div class="level-banner-pill">
+      <div class="level-banner-trophy">🏆</div>
+      <div class="level-banner-content">
+        <h2 id="level-clear-title" class="level-banner-title">LEVEL 1 CLEARED!</h2>
+        <p id="level-clear-subtitle" class="level-banner-subtitle">GET READY FOR HIGH-VOLTAGE PURPLE</p>
+      </div>
+      <div class="level-banner-timer">
+        <div id="countdown-bar-fill" class="level-timer-fill"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Milestone Flair Banner -->
+  <div id="milestone-banner">
+    <span id="milestone-icon">👍</span>
+    <span id="milestone-text">100 METERS! ROBOT IS PUMPED!</span>
+  </div>
+
+  <!-- Bottom Controls Hint -->
+  <div id="quick-hint">
+    <span><b>A / D</b> or <b>← / →</b> : Switch</span>
+    <span>•</span>
+    <span><b>SPACE / W / ↑</b> : Jump</span>
+    <span>•</span>
+    <span><b>S / ↓</b> : Slide & Fast-Fall</span>
+    <span>•</span>
+    <span><b>P / ESC</b> : Pause</span>
+  </div>
+
+  <!-- Start Screen Overlay -->
+  <section id="start-screen" class="screen">
+    <div class="modal-card">
+      <h1 class="brand-title">Robo Runner</h1>
+      <p class="subtitle">Brutal Multi-Level Test Track</p>
+
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        <span id="status-text">INITIALIZING LAB SYSTEM...</span>
+      </div>
+
+      <!-- GLTF Model Loading Progress -->
+      <div id="loading-container" class="loading-container">
+        <div class="loading-bar-bg">
+          <div id="loading-bar-fill" class="loading-bar-fill"></div>
+        </div>
+        <p id="loading-text" class="loading-text">Downloading RobotExpressive 3D Asset...</p>
+      </div>
+
+      <!-- Controls Guide -->
+      <div class="controls-guide">
+        <div class="control-row">
+          <span>Switch Lanes</span>
+          <div class="key-badges">
+            <span class="key">A</span>
+            <span class="key">D</span>
+            <span style="color: #666; font-size: 0.8rem;">or</span>
+            <span class="key">←</span>
+            <span class="key">→</span>
+          </div>
+        </div>
+        <div class="control-row">
+          <span>Jump Obstacles</span>
+          <div class="key-badges">
+            <span class="key">SPACE</span>
+            <span class="key">W</span>
+            <span class="key">↑</span>
+          </div>
+        </div>
+        <div class="control-row">
+          <span>Slide & Fast-Fall</span>
+          <div class="key-badges">
+            <span class="key">S</span>
+            <span class="key">↓</span>
+          </div>
+        </div>
+        <div class="control-row">
+          <span>Pause Game</span>
+          <div class="key-badges">
+            <span class="key">P</span>
+            <span class="key">ESC</span>
+          </div>
+        </div>
+        <div class="color-legend-row" style="display: flex; justify-content: space-between; font-size: 0.74rem; font-weight: 700; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); margin-top: 2px;">
+          <span style="color: #ff4400;">🔴 RED: JUMP</span>
+          <span style="color: #00f0ff;">🔵 CYAN: SLIDE</span>
+          <span style="color: #ffd000;">🟡 YELLOW: WALL</span>
+          <span style="color: #d946ef;">🟣 PURPLE: MOVE</span>
+        </div>
+      </div>
+
+      <button id="start-btn" class="btn-arcade" disabled>
+        <span>START RUN</span>
+        <span>⚡</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Pause Screen Overlay -->
+  <section id="pause-screen" class="screen hidden">
+    <div class="modal-card">
+      <h2 class="brand-title" style="font-size: 2.3rem; background: linear-gradient(135deg, #ffffff 30%, var(--primary-cyan) 100%); -webkit-background-clip: text;">
+        GAME PAUSED
+      </h2>
+      <p class="subtitle">Test run suspended</p>
+
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+        <button id="resume-btn" class="btn-arcade">
+          <span>RESUME RUN</span>
+          <span>▶</span>
+        </button>
+        <button id="pause-restart-btn" class="btn-arcade danger">
+          <span>RESTART RUN</span>
+          <span>🔄</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Game Over Screen Overlay -->
+  <section id="game-over-screen" class="screen hidden">
+    <div class="modal-card">
+      <h2 class="brand-title" style="background: linear-gradient(135deg, #fff 20%, #ff5470 100%); -webkit-background-clip: text;">
+        CRASH DETECTED
+      </h2>
+      <p class="subtitle">Robot test run terminated</p>
+
+      <div class="stats-grid">
+        <div class="stat-box highlight">
+          <div class="stat-label">Final Score</div>
+          <div id="final-score" class="stat-value">0</div>
+        </div>
+        <div class="stat-box highlight">
+          <div class="stat-label">Level Reached</div>
+          <div id="final-level" class="stat-value">1</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">High Score</div>
+          <div id="high-score" class="stat-value">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Dodged</div>
+          <div id="stat-dodged" class="stat-value">0</div>
+        </div>
+      </div>
+
+      <button id="restart-btn" class="btn-arcade danger">
+        <span>TRY AGAIN</span>
+        <span>🔄</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- WebGL Render Canvas Container -->
+  <div id="webgl-container"></div>
+
+  <!-- Main ES Module Entry Point -->
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

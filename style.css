@@ -1,0 +1,725 @@
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700;800&family=Outfit:wght@400;600;800&display=swap');
+
+:root {
+  --primary-cyan: #00f0ff;
+  --primary-yellow: #ffd000;
+  --accent-pink: #ff2a85;
+  --accent-purple: #7928ca;
+  --bg-dark: #0a0e17;
+  --panel-bg: rgba(13, 20, 36, 0.82);
+  --panel-border: rgba(0, 240, 255, 0.25);
+  --panel-glow: rgba(0, 240, 255, 0.2);
+  --text-main: #f0f6fc;
+  --text-muted: #8b9bb4;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-dark);
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text-main);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#webgl-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* Common Overlay Screens */
+.screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: radial-gradient(circle at center, rgba(10, 14, 23, 0.6) 0%, rgba(5, 8, 14, 0.9) 100%);
+  z-index: 20;
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.35s ease;
+  padding: 20px;
+}
+
+.screen.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Glassmorphism Card Container */
+.modal-card {
+  background: var(--panel-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 30px var(--panel-glow);
+  border-radius: 24px;
+  padding: 36px 44px;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  animation: cardEnter 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.modal-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary-cyan), var(--primary-yellow), var(--accent-pink));
+}
+
+@keyframes cardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Titles and Typography */
+.brand-title {
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 2.8rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  background: linear-gradient(135deg, #ffffff 30%, var(--primary-yellow) 70%, var(--primary-cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 10px 25px rgba(255, 208, 0, 0.2);
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 24px;
+}
+
+/* Status & Loading Bar */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: rgba(0, 240, 255, 0.1);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--primary-cyan);
+  margin-bottom: 24px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--primary-cyan);
+  box-shadow: 0 0 8px var(--primary-cyan);
+  animation: pulseDot 1.5s infinite alternate;
+}
+
+@keyframes pulseDot {
+  from { opacity: 0.4; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1.15); }
+}
+
+.loading-container {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.loading-bar-bg {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+.loading-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--primary-cyan), var(--primary-yellow));
+  border-radius: 10px;
+  transition: width 0.25s ease-out;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.6);
+}
+
+.loading-text {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+/* Controls Guide Box */
+.controls-guide {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.control-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  color: #cad5e2;
+}
+
+.key-badges {
+  display: flex;
+  gap: 5px;
+}
+
+.key {
+  display: inline-block;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  font-family: 'Chakra Petch', monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Arcade Action Buttons */
+.btn-arcade {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 16px 32px;
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #060911;
+  background: linear-gradient(135deg, var(--primary-yellow) 0%, #ffbe0b 100%);
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(255, 208, 0, 0.35), 0 3px 0 #cc9a00;
+  transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.15s ease, filter 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-arcade:hover:not(:disabled) {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
+  box-shadow: 0 12px 28px rgba(255, 208, 0, 0.5), 0 4px 0 #cc9a00;
+}
+
+.btn-arcade:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 4px 12px rgba(255, 208, 0, 0.3), 0 1px 0 #cc9a00;
+}
+
+.btn-arcade:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.7);
+}
+
+.btn-arcade.danger {
+  background: linear-gradient(135deg, #ff5470 0%, #ff2a85 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 24px rgba(255, 42, 133, 0.4), 0 3px 0 #b3004d;
+}
+
+.btn-arcade.danger:hover:not(:disabled) {
+  box-shadow: 0 12px 28px rgba(255, 42, 133, 0.6), 0 4px 0 #b3004d;
+}
+
+/* Score Stats Box (Game Over) */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 26px;
+}
+
+.stat-box {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 14px;
+  text-align: center;
+}
+
+.stat-box.highlight {
+  border-color: rgba(255, 208, 0, 0.4);
+  background: rgba(255, 208, 0, 0.05);
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.stat-value {
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.stat-box.highlight .stat-value {
+  color: var(--primary-yellow);
+  text-shadow: 0 0 12px rgba(255, 208, 0, 0.4);
+}
+
+/* Heads-Up Display (Minimalist HUD - Tucked neatly in top corners) */
+#hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0.85;
+  transition: opacity 0.3s ease;
+}
+
+#hud.hidden {
+  opacity: 0;
+}
+
+.hud-pill {
+  background: rgba(12, 18, 30, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  border-radius: 12px;
+  padding: 6px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.hud-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.hud-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.hud-value {
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--primary-cyan);
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
+  line-height: 1.1;
+}
+
+.hud-speed {
+  color: var(--primary-yellow);
+  text-shadow: 0 0 8px rgba(255, 208, 0, 0.4);
+}
+
+.hud-controls-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hud-btn {
+  background: rgba(12, 18, 30, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-main);
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  pointer-events: auto;
+}
+
+.hud-btn:hover {
+  background: rgba(0, 240, 255, 0.15);
+  border-color: var(--primary-cyan);
+  transform: translateY(-2px);
+}
+
+/* In-game Milestone Toast Banner (Compact, tucked high) */
+#milestone-banner {
+  position: absolute;
+  top: 58px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px) scale(0.9);
+  background: rgba(14, 20, 32, 0.9);
+  border: 1px solid var(--primary-yellow);
+  color: #fff;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  z-index: 15;
+  pointer-events: none;
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#milestone-banner.visible {
+  opacity: 0.9;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+
+/* Instructions footer during game */
+#quick-hint {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 14, 23, 0.5);
+  backdrop-filter: blur(6px);
+  padding: 4px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.75rem;
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  gap: 10px;
+}
+
+#quick-hint span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Level Badge in HUD */
+.hud-level {
+  color: var(--primary-yellow);
+  text-shadow: 0 0 10px rgba(255, 208, 0, 0.5);
+}
+
+/* Level Progress Bar in HUD (Compact) */
+.hud-progress-pill {
+  background: rgba(12, 18, 30, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  border-radius: 12px;
+  padding: 6px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+  pointer-events: auto;
+}
+
+.hud-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.6px;
+}
+
+.hud-progress-value {
+  color: var(--primary-cyan);
+  font-family: 'Chakra Petch', sans-serif;
+  font-weight: 700;
+  font-size: 0.72rem;
+}
+
+.hud-progress-bar {
+  width: 100%;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.hud-progress-fill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-cyan), var(--primary-yellow));
+  border-radius: 4px;
+  transition: width 0.2s ease-out;
+  box-shadow: 0 0 6px var(--primary-cyan);
+}
+
+/* Fullscreen Impact Flash & Vignette */
+.impact-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 18;
+  opacity: 0;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.8) 0%, rgba(255, 30, 80, 0.6) 60%, rgba(180, 0, 40, 0.9) 100%);
+  transition: opacity 0.08s ease-out;
+}
+
+.impact-overlay.flash {
+  opacity: 1;
+  animation: impactFlashFade 0.7s forwards cubic-bezier(0.1, 0.9, 0.2, 1);
+}
+
+@keyframes impactFlashFade {
+  0% { opacity: 1; filter: contrast(1.4); }
+  50% { opacity: 0.45; }
+  100% { opacity: 0; }
+}
+
+/* Compact Non-Obstructive Level Clear Top Banner (Tucked at top: 6%) */
+.level-clear-banner {
+  position: absolute;
+  top: 6%;
+  left: 50%;
+  transform: translateX(-50%) translateY(0);
+  z-index: 24;
+  pointer-events: none;
+  opacity: 0.92;
+  transition: opacity 0.35s ease, transform 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.level-clear-banner.hidden {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-25px);
+  visibility: hidden;
+}
+
+.level-banner-pill {
+  background: rgba(12, 18, 30, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1.5px solid var(--primary-yellow);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  border-radius: 20px;
+  padding: 8px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.level-banner-pill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--primary-yellow), transparent);
+}
+
+.level-banner-trophy {
+  font-size: 1.4rem;
+  animation: trophyBounce 1.2s infinite alternate ease-in-out;
+}
+
+@keyframes trophyBounce {
+  0% { transform: translateY(0) rotate(-4deg); }
+  100% { transform: translateY(-4px) rotate(4deg); }
+}
+
+.level-banner-content {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.level-banner-title {
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  background: linear-gradient(135deg, #ffffff 20%, var(--primary-yellow) 80%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.1;
+  margin-bottom: 2px;
+}
+
+.level-banner-subtitle {
+  font-size: 0.72rem;
+  color: #ccd7e6;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.level-banner-timer {
+  width: 70px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-left: 6px;
+}
+
+.level-timer-fill {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-yellow), var(--primary-cyan));
+  border-radius: 4px;
+  box-shadow: 0 0 6px var(--primary-yellow);
+}
+
+/* Fullscreen Warp / Shockwave Flash (Disabled to prevent visual clutter) */
+.warp-overlay {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+/* Minimalist Cinematic Stage Announcement Card (Compact Top Pill) */
+.stage-card {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%) translateY(0);
+  z-index: 26;
+  pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  width: auto;
+  max-width: 440px;
+}
+
+.stage-card.hidden {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-35px) scale(0.95);
+  visibility: hidden;
+}
+
+.stage-card-pill {
+  background: rgba(10, 15, 26, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--primary-cyan);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+  border-radius: 14px;
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+  animation: stagePillEnter 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+@keyframes stagePillEnter {
+  0% { transform: scale(0.9); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.stage-num {
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: #0c121e;
+  background: var(--primary-cyan);
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.stage-divider {
+  width: 1px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.stage-info {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.stage-name {
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 0.96rem;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #ffffff;
+  line-height: 1.1;
+}
+
+.stage-desc {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: #8fa2bc;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
